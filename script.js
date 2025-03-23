@@ -12,16 +12,19 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadBookings() {
         showLoading();
         try {
-            const response = await fetch('data.json');
+            const response = await fetch('data.json'); 
             if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+                throw new Error(`Не удалось загрузить data.json. Статус: ${response.status}`);
             }
             const data = await response.json();
+            console.log('Необработанные данные из JSON:', data); // Отладка сырого ответа
             bookings = data.bookings || [];
-            const storedBookings = JSON.parse(localStorage.getItem('bookings')) || [];
-            bookings = [...bookings, ...storedBookings];
-            console.log('Загруженные бронирования:', bookings);
-            status.textContent = 'Данные успешно загружены';
+            console.log('Загруженные бронирования:', bookings); // Отладка после обработки
+            if (bookings.length === 0) {
+                status.textContent = 'Данные загружены, но список бронирований пуст';
+            } else {
+                status.textContent = `Данные успешно загружены (${bookings.length} записей)`;
+            }
         } catch (error) {
             status.textContent = 'Ошибка загрузки data.json. Проверьте консоль.';
             console.error('Ошибка:', error);
@@ -32,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateSeats(takenSeats = []) {
         seatsContainer.innerHTML = '';
-        console.log('Генерация мест, занятые:', takenSeats);
+        console.log('Генерация мест, занятые:', takenSeats); // Отладка
         for (let row = 1; row <= 5; row++) {
             for (let col = 1; col <= 10; col++) {
                 const seat = document.createElement('div');
@@ -51,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const movie = movieSelect.value;
         const date = dateInput.value;
         const time = timeSelect.value;
-        console.log('Обновление мест:', { movie, date, time });
+        console.log('Обновление мест:', { movie, date, time }); // Отладка
         if (!movie || !date || !time) {
             status.textContent = 'Выберите фильм, дату и время для отображения мест';
             seatsContainer.innerHTML = '';
@@ -59,10 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const takenSeats = bookings
-            .filter(b => b.movie === movie && b.date === date && b.time === time)
+            .filter(b => {
+                const match = b.movie === movie && b.date === date && b.time === time;
+                console.log(`Фильтр: movie=${b.movie}, date=${b.date}, time=${b.time} -> ${match}`);
+                return match;
+            })
             .flatMap(b => b.seats);
         generateSeats(takenSeats);
-        status.textContent = '';
+        status.textContent = takenSeats.length > 0 ? `Занято мест: ${takenSeats.length}` : 'Места не найдены для этой комбинации';
     }
 
     seatsContainer.addEventListener('click', (e) => {
