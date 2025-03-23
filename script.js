@@ -17,21 +17,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
             const data = await response.json();
-            console.log('Данные из JSON:', data); 
             bookings = data.bookings || [];
+            const storedBookings = JSON.parse(localStorage.getItem('bookings')) || [];
+            bookings = [...bookings, ...storedBookings];
+            console.log('Загруженные бронирования:', bookings);
             status.textContent = 'Данные успешно загружены';
         } catch (error) {
-            status.textContent = 'Ошибка загрузки данных из data.json';
+            status.textContent = 'Ошибка загрузки data.json. Проверьте консоль.';
             console.error('Ошибка:', error);
         } finally {
             hideLoading();
         }
     }
 
-
     function generateSeats(takenSeats = []) {
         seatsContainer.innerHTML = '';
-        console.log('Генерация мест, занятые:', takenSeats); 
+        console.log('Генерация мест, занятые:', takenSeats);
         for (let row = 1; row <= 5; row++) {
             for (let col = 1; col <= 10; col++) {
                 const seat = document.createElement('div');
@@ -50,10 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const movie = movieSelect.value;
         const date = dateInput.value;
         const time = timeSelect.value;
-        console.log('Обновление мест:', { movie, date, time }); 
+        console.log('Обновление мест:', { movie, date, time });
         if (!movie || !date || !time) {
             status.textContent = 'Выберите фильм, дату и время для отображения мест';
-            seatsContainer.innerHTML = ''; 
+            seatsContainer.innerHTML = '';
             return;
         }
 
@@ -61,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(b => b.movie === movie && b.date === date && b.time === time)
             .flatMap(b => b.seats);
         generateSeats(takenSeats);
-        status.textContent = ''; 
+        status.textContent = '';
     }
 
     seatsContainer.addEventListener('click', (e) => {
@@ -104,7 +105,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (overlap) {
                 status.textContent = 'Некоторые места уже заняты!';
             } else {
-                bookings.push({ movie, date, time, seats: [...selectedSeats] });
+                const newBooking = { movie, date, time, seats: [...selectedSeats] };
+                bookings.push(newBooking);
+                const storedBookings = JSON.parse(localStorage.getItem('bookings')) || [];
+                storedBookings.push(newBooking);
+                localStorage.setItem('bookings', JSON.stringify(storedBookings));
                 status.textContent = `Забронированы места: ${selectedSeats.join(', ')}`;
                 selectedSeats.forEach(id => {
                     const seat = document.querySelector(`[data-id="${id}"]`);
@@ -133,5 +138,5 @@ document.addEventListener('DOMContentLoaded', () => {
         loading.classList.add('hidden');
     }
 
-    loadBookings();
+    loadBookings().then(() => updateSeats());
 });
