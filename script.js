@@ -12,19 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadBookings() {
         showLoading();
         try {
-            const response = await fetch('data.json'); 
+            const response = await fetch('data.json');
             if (!response.ok) {
                 throw new Error(`Не удалось загрузить data.json. Статус: ${response.status}`);
             }
             const data = await response.json();
-            console.log('Необработанные данные из JSON:', data); // Отладка сырого ответа
+            console.log('Необработанные данные из JSON:', data);
             bookings = data.bookings || [];
-            console.log('Загруженные бронирования:', bookings); // Отладка после обработки
-            if (bookings.length === 0) {
-                status.textContent = 'Данные загружены, но список бронирований пуст';
-            } else {
-                status.textContent = `Данные успешно загружены (${bookings.length} записей)`;
-            }
+            const storedBookings = JSON.parse(localStorage.getItem('bookings')) || [];
+            bookings = [...bookings, ...storedBookings];
+            console.log('Все бронирования (JSON + localStorage):', bookings);
+            status.textContent = `Данные загружены (${bookings.length} записей)`;
         } catch (error) {
             status.textContent = 'Ошибка загрузки data.json. Проверьте консоль.';
             console.error('Ошибка:', error);
@@ -35,18 +33,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateSeats(takenSeats = []) {
         seatsContainer.innerHTML = '';
-        console.log('Генерация мест, занятые:', takenSeats); // Отладка
+        console.log('Передано занятых мест в generateSeats:', takenSeats); // Отладка
         for (let row = 1; row <= 5; row++) {
             for (let col = 1; col <= 10; col++) {
+                const seatId = `${row}${String.fromCharCode(64 + col)}`;
                 const seat = document.createElement('div');
                 seat.classList.add('seat');
-                seat.dataset.id = `${row}-${col}`;
-                seat.textContent = `${row}${String.fromCharCode(64 + col)}`;
-                if (takenSeats.includes(seat.dataset.id)) {
+                seat.dataset.id = seatId;
+                seat.textContent = seatId;
+                if (takenSeats.includes(seatId)) {
+                    console.log(`Место ${seatId} занято`); // Отладка
                     seat.classList.add('taken');
                 }
                 seatsContainer.appendChild(seat);
             }
+        }
+        if (takenSeats.length === 0) {
+            console.log('Нет занятых мест для отображения');
         }
     }
 
@@ -54,20 +57,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const movie = movieSelect.value;
         const date = dateInput.value;
         const time = timeSelect.value;
-        console.log('Обновление мест:', { movie, date, time }); // Отладка
+        console.log('Выбранные значения:', { movie, date, time }); // Отладка
         if (!movie || !date || !time) {
             status.textContent = 'Выберите фильм, дату и время для отображения мест';
             seatsContainer.innerHTML = '';
             return;
         }
 
-        const takenSeats = bookings
-            .filter(b => {
-                const match = b.movie === movie && b.date === date && b.time === time;
-                console.log(`Фильтр: movie=${b.movie}, date=${b.date}, time=${b.time} -> ${match}`);
-                return match;
-            })
-            .flatMap(b => b.seats);
+        const filteredBookings = bookings.filter(b => {
+            const match = b.movie === movie && b.date === date && b.time === time;
+            console.log(`Проверка: movie=${b.movie}, date=${b.date}, time=${b.time} -> Совпадение: ${match}`);
+            return match;
+        });
+        console.log('Отфильтрованные бронирования:', filteredBookings); // Отладка
+
+        const takenSeats = filteredBookings.flatMap(b => b.seats);
+        console.log('Занятые места для генерации:', takenSeats); // Отладка
         generateSeats(takenSeats);
         status.textContent = takenSeats.length > 0 ? `Занято мест: ${takenSeats.length}` : 'Места не найдены для этой комбинации';
     }
